@@ -39,7 +39,7 @@ one of them, others should be easy to substitute.
 """
 
 import tensorflow.compat.v1 as tf
-
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from tensorflow.python.ops import rnn_cell_impl
 
 

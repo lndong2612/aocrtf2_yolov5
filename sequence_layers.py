@@ -41,7 +41,7 @@ import logging
 import numpy as np
 
 import tensorflow.compat.v1 as tf
-
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import tf_slim as slim
 import legacy_seq2seq
 

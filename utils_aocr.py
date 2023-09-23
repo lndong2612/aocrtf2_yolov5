@@ -16,6 +16,7 @@
 """Functions to support building models for StreetView text transcription."""
 
 import tensorflow.compat.v1 as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import tf_slim as slim
 
 

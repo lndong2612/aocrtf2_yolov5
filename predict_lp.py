@@ -21,6 +21,7 @@ import numpy as np
 import PIL.Image
 
 import tensorflow.compat.v1 as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from tensorflow.compat.v1 import flags
 from tensorflow.python.training import monitored_session
 
@@ -68,17 +69,35 @@ def create_model(batch_size, dataset_name):
   return raw_images, endpoints
 
 
-def predict(checkpoint, batch_size, dataset_name, image_path_pattern):
+def predict(checkpoint, batch_size, dataset_name, classified):
   images_placeholder, endpoints = create_model(batch_size,
                                                dataset_name)
-  images_data = load_images(image_path_pattern, batch_size,
-                            dataset_name)
-  session_creator = monitored_session.ChiefSessionCreator(
-      checkpoint_filename_with_path=checkpoint)
-  with monitored_session.MonitoredSession(
-          session_creator=session_creator) as sess:
-    predictions = sess.run(endpoints.predicted_text,
-                           feed_dict={images_placeholder: images_data})
-  result = [pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()]
+  
+  session_creator = monitored_session.ChiefSessionCreator(checkpoint_filename_with_path=checkpoint)
+  with monitored_session.MonitoredSession(session_creator=session_creator) as sess:
+    for info in classified:
+      im_path = info['path']
+      images_data = load_images(im_path, batch_size, dataset_name)
+      predictions = sess.run(endpoints.predicted_text,
+                                  feed_dict={images_placeholder: images_data})
+      result = [pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()][-1]
+      info.update({'label':result})
+        
+  return classified
 
-  return result
+def draw_bbox(image_path, classified):
+  image_full = cv2.imread(image_path)
+  fontScale = 0.5
+  image_h, image_w, _ = image_full.shape
+  bbox_thick = int(0.6 * (image_h + image_w) / 600)
+  bbox_color = (0, 255, 0)
+  for info in classified:
+    lp_number = info['label']
+    lp_number_process = re.sub(r"[^a-zA-Z0-9.\-\s]", "", lp_number)
+    t_size = cv2.getTextSize(lp_number_process, 0, fontScale, thickness=bbox_thick // 2)[0]
+    c3 = (info['xmin'] + t_size[0], info['ymin'] - t_size[1] - 7)
+    cv2.rectangle(image_full, (info['xmin'], info['ymin']), (info['xmax'], info['ymax']), color = bbox_color, thickness = 2)
+    cv2.rectangle(image_full, (info['xmin'], info['ymin']), c3, bbox_color, -1) #filled
+    cv2.putText(image_full, lp_number_process, (info['xmin'], info['ymin'] - 3), cv2.FONT_HERSHEY_SIMPLEX, fontScale, (0,0,0), bbox_thick // 2, lineType=cv2.LINE_AA)
+
+  return image_full
